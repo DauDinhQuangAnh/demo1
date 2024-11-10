@@ -6,7 +6,17 @@ from constant import USER, ASSISTANT, ONLINE_LLM
 import chromadb
 import json
 
-st.header("Interactive Chatbot222")
+st.markdown(
+    """
+    <h1 style='display: flex; align-items: center;'>
+        <img src="https://tuyensinh.uit.edu.vn/sites/default/files/uploads/images/uit_footer.png" width="50" style='margin-right: 10px'>
+        UIT Admissions Chatbot 🎓
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
+st.markdown("Welcome to the UIT Admissions Chatbot!❓❓❓ Discover all the information you need about admissions, 📚programs, 💸scholarships, 🌟Student Life at UIT and more with us.")
+
 
 def load_session_state(file_path="session_state.json"):
     try:
@@ -19,7 +29,8 @@ def load_session_state(file_path="session_state.json"):
         st.error("Session state file not found.")
     except json.JSONDecodeError:
         st.error("Error decoding session state file.")
-
+if "search_option" not in st.session_state:
+    st.session_state.search_option = "Vector Search"
 # Display the collection name
 if "collection" not in st.session_state:
     load_session_state(file_path="pages/session_state.json")
@@ -35,9 +46,6 @@ if "embedding_model_name" in st.session_state and "embedding_model" not in st.se
     st.session_state.embedding_model = SentenceTransformer(
         st.session_state.embedding_model_name
     )
-if "search_option" not in st.session_state:
-    st.session_state.search_option = "Vector Search"
-    
 if "columns_to_answer" not in st.session_state:
     st.session_state.columns_to_answer = ["name"]
 

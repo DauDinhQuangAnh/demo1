@@ -28,28 +28,26 @@ def clear_session_state():
     for key in st.session_state.keys():
         del st.session_state[key]
 
-# Button to clear all session state
-# st.sidebar.header("Clear Session State")
-# if st.sidebar.button("Clear Session State"):
-#     clear_session_state()
-#     st.success("Session state has been cleared successfully!")
-
 llm_options = {
     "Online": "Online"
 }
 
+# Tiêu đề chính
+st.markdown(
+    """
+    <h1 style='display: flex; align-items: center;'>
+        <img src="https://tuyensinh.uit.edu.vn/sites/default/files/uploads/images/uit_footer.png" width="50" style='margin-right: 10px'>
+        UIT Admissions Chatbot 🎓
+    </h1>
+    """,
+    unsafe_allow_html=True
+)
+st.markdown("Welcome to the UIT Admissions Chatbot!❓❓❓ Discover all the information you need about admissions, 📚programs, 💸scholarships, 🌟Student Life at UIT and more with us.")
 
-# Initialize the page
-st.header("Drag and Drop RAG")
-st.markdown("Design your own chatbot using the RAG system.")
-st.logo("/home/user/Downloads/drop-rag-master/image/kisspng-ho-chi-minh-city-university-of-science-ho-chi-minh-zalo-official-account-zalo-official-account-1713918694274.webp")
-
-
-# --- Initialize session state for language choice and model embedding
 if "language" not in st.session_state:
-    st.session_state.language = None  # Default language is English
+    st.session_state.language = None  
 if "embedding_model" not in st.session_state:
-    st.session_state.embedding_model = None  # Placeholder for the embedding model
+    st.session_state.embedding_model = None
 
 if "llm_model" not in st.session_state:
     st.session_state.llm_model = None
@@ -83,10 +81,6 @@ if "chunk_overlap" not in st.session_state:
 
 # --- End of initialization
 
-
-if "graph_query" not in st.session_state:
-    st.session_state.graph_query = """MATCH (n)-[r]->(m) RETURN n, r, m LIMIT 100"""
-
 # Sidebar settings
 st.sidebar.header("Settings")
 
@@ -95,7 +89,7 @@ st.session_state.chunk_size = st.sidebar.number_input(
     "Chunk Size",
     min_value=10, 
     max_value=1000, 
-    value=200, 
+    value=1000, 
     step=10, 
     help="Set the size of each chunk in terms of tokens.",
 
@@ -115,7 +109,7 @@ st.session_state.number_docs_retrieval = st.sidebar.number_input(
     "Number of documnents retrieval", 
     min_value=1, 
     max_value=50,
-    value=3,
+    value=10,
     step=1,
     help="Set the number of document which will be retrieved."
 )
@@ -155,10 +149,9 @@ elif language_choice == VIETNAMESE:
 
 header_i += 1
 st.header(f"{header_i}. Setup data source")
-st.subheader(f"{header_i}.1. Upload data ", divider=True)
+st.subheader(f"{header_i}.1. Upload data (Upload CSV, JSON, PDF, or DOCX files)", divider=True)
 uploaded_files = st.file_uploader(
-    "Upload CSV, JSON, PDF, or DOCX files", 
-    # type=["csv", "json", "pdf", "docx"], 
+    "", 
     accept_multiple_files=True
 )
 
@@ -428,9 +421,6 @@ st.header(header_text)
 if st.session_state.data_saved_success:
     st.markdown("✅ **Data Saved Successfully!**")
 
-
-
-
 # Step 3: Define which columns LLMs should answer from
 if "random_collection_name" in st.session_state and st.session_state.random_collection_name is not None and st.session_state.chunks_df is not None:
     st.session_state.columns_to_answer = st.multiselect(
@@ -471,8 +461,6 @@ st.sidebar.markdown(f"2. Language: **{st.session_state.language}**")
 st.sidebar.markdown(f"3. Embedding Model: **{st.session_state.embedding_model.__class__.__name__ if st.session_state.embedding_model else 'None'}**")
 st.sidebar.markdown(f"4. Chunk Size: **{st.session_state.chunk_size}**")
 st.sidebar.markdown(f"5. Number of Documents Retrieval: **{st.session_state.number_docs_retrieval}**")
-st.sidebar.markdown(f"6. Data Saved: **{'Yes' if st.session_state.data_saved_success else 'No'}**")
-st.sidebar.markdown(f"7. LLM API Key Set: **{'Yes' if st.session_state.get('llm_api_key') else 'No'}**")
 if st.session_state.get('chunkOption'):
     st.sidebar.markdown(f"8. Chunking Option: **{st.session_state.chunkOption}**")
 
