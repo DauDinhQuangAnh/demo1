@@ -236,8 +236,7 @@ if all_data:
             
     chunk_options = [
         "RecursiveTokenChunker", 
-        "SemanticChunker",
-        "AgenticChunker",
+        "SemanticChunker"
     ]
 
     # Step 4: Chunking options
@@ -256,7 +255,6 @@ if all_data:
         captions=[
             "Recursively chunks text into smaller, meaningful token groups based on specific rules or criteria.",
             "Chunking with semantic comparison between chunks",
-            "Let LLM decide chunking"
         ],
         key="chunkOption",
         index=currentChunkerIdx
@@ -265,15 +263,8 @@ if all_data:
     chunkOption = st.session_state.get("chunkOption")
     
     if chunkOption == "SemanticChunker":
-        embedding_option = st.selectbox(
-            "Choose the embedding method for Semantic Chunker:",
-            ["TF-IDF", "Sentence-Transformers"]
-        )
+        embedding_option = "TF-IDF"
     chunk_records = []
-
-    if chunkOption == "AgenticChunker":
-        if st.session_state.get("llm_choice") == llm_options["Online"] and not st.session_state.get("llm_api_key"):
-            st.warning("You have to setup the LLMs first in LLM Section")
 
     # Iterate over rows in the original DataFrame
     for index, row in df.iterrows():
@@ -296,15 +287,6 @@ if all_data:
                 chunker = ProtonxSemanticChunker(
                     embedding_type="tfidf",
                 )
-            else:
-                chunker = ProtonxSemanticChunker(
-                    embedding_type="transformers",
-                    model="all-MiniLM-L6-v2",
-                )
-            chunks = chunker.split_text(selected_column_value)
-        
-        elif chunkOption == "AgenticChunker" and st.session_state.get("llm_choice") == llm_options["Online"] and st.session_state.get("llm_api_key"):
-            chunker = LLMAgenticChunkerv2(st.session_state.get("llm_model"))
             chunks = chunker.split_text(selected_column_value)
         
         # For each chunk, add a dictionary with the chunk and original_id to the list
@@ -552,7 +534,10 @@ if prompt := st.chat_input("What is up?"):
                         num_samples=1
                     )
 
-                    enhanced_prompt = """The prompt of the user is: "{}". Answer it based on the following retrieved data: \n{}""".format(prompt, retrieved_data)
+                    enhanced_prompt = """The user prompt is: "{}". 
+                    You are a chatbot designed to answer questions related to admissions at UIT (University of Information Technology). 
+                    Please respond in a friendly and helpful manner, providing accurate and detailed information about admissions, scholarships, programs, and student life at UIT. 
+                    Use the following retrieved data to craft your response: \n{}""".format(prompt, retrieved_data)
 
                 
                 if metadatas:
