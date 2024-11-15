@@ -7,9 +7,9 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 import google.generativeai as genai
 from IPython.display import Markdown
-from chunking import RecursiveTokenChunker, LLMAgenticChunkerv2, ProtonxSemanticChunker
+from chunking import RecursiveTokenChunker, ProtonxSemanticChunker
 from utils import process_batch, divide_dataframe, clean_collection_name
-from search import vector_search, keywords_search, hyde_search
+from search import vector_search, hyde_search
 from llms.onlinellms import OnlineLLMs
 import time
 import pdfplumber  # PDF extraction
@@ -19,7 +19,6 @@ from components import notify
 from constant import EN, VI, USER, ASSISTANT, ENGLISH, VIETNAMESE, ONLINE_LLM,  GEMINI, DB
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.schema import Document as langchainDocument
-from langchain_openai import ChatOpenAI
 from collection_management import list_collection
 from dotenv import load_dotenv
 load_dotenv()
@@ -109,7 +108,7 @@ st.session_state.number_docs_retrieval = st.sidebar.number_input(
     "Number of documnents retrieval", 
     min_value=1, 
     max_value=50,
-    value=10,
+    value=15,
     step=1,
     help="Set the number of document which will be retrieved."
 )
@@ -158,10 +157,6 @@ uploaded_files = st.file_uploader(
 # Initialize a variable for tracking the success of saving the data
 st.session_state.data_saved_success = False
 
-
-
-
-
 if uploaded_files is not None:
     all_data = []
     
@@ -196,20 +191,6 @@ if uploaded_files is not None:
             # Convert DOCX text into a DataFrame (assuming one column for simplicity)
             df = pd.DataFrame({"content": docx_text})
             all_data.append(df)
-        elif uploaded_file.name.endswith(".xlsx") or uploaded_file.type == "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet":
-            # Read Excel file
-            try:
-                df = pd.read_excel(
-                    uploaded_file,
-                    engine="openpyxl"
-                    )
-                all_data.append(df)
-            except Exception as e:
-                st.error(f"Error reading file: {str(e)}")
-        else:
-            st.error("Unsupported file format.")
-
-
 
 # Concatenate all data into a single DataFrame
 if all_data:
@@ -221,7 +202,7 @@ if all_data:
     if "doc_ids" not in st.session_state:
         st.session_state.doc_ids = doc_ids
 
-    # Add or replace the '_id' column in the DataFrame
+    # Add or replace the '_id' column in the DataFrame+
     df['doc_id'] = st.session_state.doc_ids
 
     st.subheader("Chunking")
@@ -481,7 +462,7 @@ for message in st.session_state.chat_history:
         st.markdown(message["content"])
 
 
-if prompt := st.chat_input("What is up?"):
+if prompt := st.chat_input("How can I assist you today?"):
     # Add user message to chat history
     st.session_state.chat_history.append({"role": USER, "content": prompt})
     # Display user message in chat message container
@@ -504,17 +485,10 @@ if prompt := st.chat_input("What is up?"):
                         st.session_state.number_docs_retrieval
                     )
                     
-                    enhanced_prompt = """The prompt of the user is: "{}". Answer it based on the following retrieved data: \n{}""".format(prompt, retrieved_data)
-
-                elif st.session_state.search_option == "Keywords Search":
-                    metadatas, retrieved_data = keywords_search(
-                        prompt,
-                        st.session_state.collection,
-                        st.session_state.columns_to_answer,
-                        st.session_state.number_docs_retrieval
-                    )
-
-                    enhanced_prompt = """The prompt of the user is: "{}". Answer it based on the following retrieved data: \n{}""".format(prompt, retrieved_data)
+                    enhanced_prompt = """The user prompt is: "{}". 
+                    You are a chatbot designed to answer questions related to admissions at UIT (University of Information Technology). 
+                    Please respond in a friendly and helpful manner, providing accurate and detailed information about admissions, scholarships, programs, and student life at UIT. 
+                    Use the following retrieved data to craft your response: \n{}""".format(prompt, retrieved_data)
 
                 elif st.session_state.search_option == "Hyde Search":
               
@@ -522,7 +496,6 @@ if prompt := st.chat_input("What is up?"):
                         model = st.session_state.llm_model
                     else:
                         model = st.session_state.local_llms
-
 
                     metadatas, retrieved_data = hyde_search(
                         model,

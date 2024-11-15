@@ -21,24 +21,6 @@ def vector_search(model, query, collection, columns_to_answer, number_docs_retri
     return metadatas, search_result
 
 
-def keywords_search(query, collection, columns_to_answer, number_docs_retrieval):
-    search_results = collection.query(
-        query_texts=[query],
-        n_results=number_docs_retrieval)  # Fetch top 10 results
-    search_result = ""
-    metadatas = search_results['metadatas']
-
-    i = 0
-    for meta in metadatas[0]:
-        i += 1
-        search_result += f"\n{i})"
-        for column in columns_to_answer:
-            if column in meta:
-                search_result += f" {column.capitalize()}: {meta.get(column)}"
-
-        search_result += "\n"
-    return metadatas, search_result
-
 def generate_hypothetical_documents(model, query, num_samples=5):
     """
     Generate multiple hypothetical documents using the Gemini model.

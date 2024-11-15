@@ -22,12 +22,10 @@ class ProtonxSemanticChunker(BaseChunker):
         if self.embedding_type == "tfidf":
             vectorizer = TfidfVectorizer().fit_transform(sentences)
             return vectorizer.toarray()
-        elif self.embedding_type == "transformers":
-            self.model = SentenceTransformer(self.model)
-            return self.model.encode(sentences)
-        
+
+
         else:
-            raise ValueError("Unsupported embedding type. Choose 'tfidf' or 'transformers'.")
+            raise ValueError("Unsupported embedding type")
     
         
     def split_text(self, text):
