@@ -15,14 +15,10 @@ class ProtonxSemanticChunker(BaseChunker):
         nltk.download("punkt", quiet=True)
     
     def embed_function(self, sentences):
-        """
-        Embeds sentences using the specified embedding method.
-        Supports 'tfidf' and 'transformers' embeddings.
-        """
+    
         if self.embedding_type == "tfidf":
             vectorizer = TfidfVectorizer().fit_transform(sentences)
             return vectorizer.toarray()
-
 
         else:
             raise ValueError("Unsupported embedding type")
@@ -43,7 +39,7 @@ class ProtonxSemanticChunker(BaseChunker):
         # Initialize chunks with the first sentence
         chunks = [[sentences[0]]]
 
-        # Group sentences into chunks based on similarity threshold
+        # Group sentences into chunks based on similarity threshold 0 1 2 3
         for i in range(1, len(sentences)):
             sim_score = similarities[i-1, i]
 

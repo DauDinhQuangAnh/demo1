@@ -1,23 +1,28 @@
 import numpy as np
 # Define a helper function for formatting retrieved data
-def vector_search(model, query, collection, columns_to_answer, number_docs_retrieval ):
+def vector_search(model, query, collection, columns_to_answer, number_docs_retrieval):
+    # Encode query into embeddings
     query_embeddings = model.encode([query])
+    
+    # Fetch results from the collection
     search_results = collection.query(
         query_embeddings=query_embeddings, 
-        n_results=number_docs_retrieval)  # Fetch top 10 results
+        n_results=number_docs_retrieval
+    )
+    #id, ebding, metadata
+    # Extract metadata and similarity scores
+    metadatas = search_results['metadatas']  # Metadata for retrieved documents
+    scores = search_results['distances']  # Similarity scores (or distances)
+
+    # Prepare the search result output
     search_result = ""
-
-    metadatas =  search_results['metadatas']
-
-    i = 0
-    for meta in metadatas[0]:
-        i += 1
-        search_result += f"\n{i})"
+    for i, (meta, score) in enumerate(zip(metadatas[0], scores[0]), start=1):
+        search_result += f"\n{i}) Distances: {score:.4f}"  # Display similarity score
         for column in columns_to_answer:
             if column in meta:
                 search_result += f" {column.capitalize()}: {meta.get(column)}"
-
         search_result += "\n"
+
     return metadatas, search_result
 
 

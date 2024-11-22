@@ -7,7 +7,7 @@ from sentence_transformers import SentenceTransformer
 import chromadb
 import google.generativeai as genai
 from IPython.display import Markdown
-from chunking import RecursiveTokenChunker, ProtonxSemanticChunker
+from chunking import ProtonxSemanticChunker
 from utils import process_batch, divide_dataframe, clean_collection_name
 from search import vector_search, hyde_search
 from llms.onlinellms import OnlineLLMs
@@ -17,10 +17,12 @@ import io
 from docx import Document  # DOCX extraction
 from components import notify
 from constant import EN, VI, USER, ASSISTANT, ENGLISH, VIETNAMESE, ONLINE_LLM,  GEMINI, DB
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.schema import Document as langchainDocument
 from collection_management import list_collection
 from dotenv import load_dotenv
+import nltk
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
 load_dotenv()
 
 def clear_session_state():
@@ -44,7 +46,7 @@ st.markdown(
 st.markdown("Welcome to the UIT Admissions Chatbot!❓❓❓ Discover all the information you need about admissions, 📚programs, 💸scholarships, 🌟Student Life at UIT and more with us.")
 
 if "language" not in st.session_state:
-    st.session_state.language = None  
+    st.session_state.language = VIETNAMESE  
 if "embedding_model" not in st.session_state:
     st.session_state.embedding_model = None
 
@@ -72,37 +74,10 @@ if "chunks_df" not in st.session_state:
 if "random_collection_name" not in st.session_state:
     st.session_state.random_collection_name = None
 
-if "chunk_size" not in st.session_state:
-    st.session_state.chunk_size = 200
-
-if "chunk_overlap" not in st.session_state:
-    st.session_state.chunk_overlap = 10
-
 # --- End of initialization
 
 # Sidebar settings
 st.sidebar.header("Settings")
-
-# Chunk size input
-st.session_state.chunk_size = st.sidebar.number_input(
-    "Chunk Size",
-    min_value=10, 
-    max_value=1000, 
-    value=1000, 
-    step=10, 
-    help="Set the size of each chunk in terms of tokens.",
-
-)
-st.session_state.chunk_overlap = st.sidebar.number_input(
-    "Chunk Overlap",
-    min_value=0, 
-    max_value=1000, 
-    step=10, 
-    value=st.session_state.chunk_size // 10,
-    help="Set the size of each chunk in terms of tokens.",
-
-)
-
 
 st.session_state.number_docs_retrieval = st.sidebar.number_input(
     "Number of documnents retrieval", 
@@ -113,29 +88,8 @@ st.session_state.number_docs_retrieval = st.sidebar.number_input(
     help="Set the number of document which will be retrieved."
 )
 
-header_i = 1
-# Language selection popup
-header_text = "{}. Setup Language".format(header_i)
-st.header(header_text)
-language_choice = st.radio(
-    "Select language:", [
-        VIETNAMESE,
-        ENGLISH
-    ],
-    index=0
-    )
-
-# Switch embedding model based on language choice
-if language_choice == ENGLISH:
-    if st.session_state.get("language") != EN:
-        st.session_state.language = EN
-        # Only load the model if it hasn't been loaded before
-        if st.session_state.get("embedding_model_name") != 'all-MiniLM-L6-v2':
-            st.session_state.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-            st.session_state.embedding_model_name = 'all-MiniLM-L6-v2'
-        st.success("Using English embedding model: all-MiniLM-L6-v2")
-
-elif language_choice == VIETNAMESE:
+language_choice = "Vietnamese"
+if language_choice == VIETNAMESE:
     if st.session_state.get("language") != VI:
         st.session_state.language = VI
         # Only load the model if it hasn't been loaded before
@@ -146,7 +100,7 @@ elif language_choice == VIETNAMESE:
 
 # Step 1: File Upload (CSV, JSON, PDF, or DOCX) and Column Detection
 
-header_i += 1
+header_i = 1
 st.header(f"{header_i}. Setup data source")
 st.subheader(f"{header_i}.1. Upload data (Upload CSV, JSON, PDF, or DOCX files)", divider=True)
 uploaded_files = st.file_uploader(
@@ -215,32 +169,24 @@ if all_data:
     else:
         st.warning("The DataFrame is empty, please upload valid data.")
             
-    chunk_options = [
-        "RecursiveTokenChunker", 
-        "SemanticChunker"
-    ]
+    chunk_options = ["SemanticChunker"]
 
     # Step 4: Chunking options
-    if st.session_state.get("llm_choice") == llm_options["Online"] and not st.session_state.get("llm_api_key") and st.session_state.get("chunkOption") == "AgenticChunker":
-        currentChunkerIdx = 0
-        st.session_state.chunkOption = "RecursiveTokenChunker"  # Set a default option
-    elif not st.session_state.get("chunkOption"):
-        currentChunkerIdx = 0
-        st.session_state.chunkOption = "RecursiveTokenChunker"  # Set a default option
-    else:
-        currentChunkerIdx = chunk_options.index(st.session_state.get("chunkOption"))
+    if not st.session_state.get("chunkOption"):
+        st.session_state.chunkOption = "SemanticChunker" 
+
+    currentChunkerIdx = 0
     
     st.radio(
-        "Please select one of the options below.",
+        "",
         chunk_options,
         captions=[
-            "Recursively chunks text into smaller, meaningful token groups based on specific rules or criteria.",
             "Chunking with semantic comparison between chunks",
         ],
         key="chunkOption",
         index=currentChunkerIdx
     )
-    
+    # Lấy lựa chọn phương pháp chia nhỏ
     chunkOption = st.session_state.get("chunkOption")
     
     if chunkOption == "SemanticChunker":
@@ -255,15 +201,7 @@ if all_data:
         if not (type(selected_column_value) == str and len(selected_column_value) > 0):
             continue
         
-        # For "RecursiveTokenChunker" option, split text from the selected index column into smaller chunks
-        if chunkOption == "RecursiveTokenChunker":
-            chunker = RecursiveTokenChunker(
-                chunk_size=st.session_state.chunk_size,
-                chunk_overlap=st.session_state.chunk_overlap
-            )
-            chunks = chunker.split_text(selected_column_value)
-        
-        elif chunkOption == "SemanticChunker":
+        if chunkOption == "SemanticChunker":
             if embedding_option == "TF-IDF":
                 chunker = ProtonxSemanticChunker(
                     embedding_type="tfidf",
@@ -418,14 +356,12 @@ if st.session_state.get('llm_api_key'):
     )
     st.markdown("✅ **API Key Saved Successfully!**")
 
-st.sidebar.subheader("All configurations:")
 st.sidebar.markdown(f"1. LLM model: **{st.session_state.llm_name if 'llm_name' in st.session_state else 'Not selected'}**")
 st.sidebar.markdown(f"2. Language: **{st.session_state.language}**")
 st.sidebar.markdown(f"3. Embedding Model: **{st.session_state.embedding_model.__class__.__name__ if st.session_state.embedding_model else 'None'}**")
-st.sidebar.markdown(f"4. Chunk Size: **{st.session_state.chunk_size}**")
-st.sidebar.markdown(f"5. Number of Documents Retrieval: **{st.session_state.number_docs_retrieval}**")
+st.sidebar.markdown(f"4. Number of Documents Retrieval: **{st.session_state.number_docs_retrieval}**")
 if st.session_state.get('chunkOption'):
-    st.sidebar.markdown(f"8. Chunking Option: **{st.session_state.chunkOption}**")
+    st.sidebar.markdown(f". Chunking Option: **{st.session_state.chunkOption}**")
 
 header_i += 1
 header_text_llm = "{}. Set up search algorithms".format(header_i)
@@ -484,10 +420,8 @@ if prompt := st.chat_input("How can I assist you today?"):
                         st.session_state.columns_to_answer,
                         st.session_state.number_docs_retrieval
                     )
-                    
-                    enhanced_prompt = """The user prompt is: "{}". 
-                    You are a chatbot designed to answer questions related to admissions at UIT (University of Information Technology). 
-                    Please respond in a friendly and helpful manner, providing accurate and detailed information about admissions, scholarships, programs, and student life at UIT. 
+                    #retrieved_data,
+                    enhanced_prompt = """The user prompt is: "{}". Just answer.
                     Use the following retrieved data to craft your response: \n{}""".format(prompt, retrieved_data)
 
                 elif st.session_state.search_option == "Hyde Search":
@@ -511,7 +445,7 @@ if prompt := st.chat_input("How can I assist you today?"):
                     You are a chatbot designed to answer questions related to admissions at UIT (University of Information Technology). 
                     Please respond in a friendly and helpful manner, providing accurate and detailed information about admissions, scholarships, programs, and student life at UIT. 
                     Use the following retrieved data to craft your response: \n{}""".format(prompt, retrieved_data)
-
+# Đã có prompt, retrieved_data -> metadata{answer, question, chunk }
                 
                 if metadatas:
                     flattened_metadatas = [item for sublist in metadatas for item in sublist]  # Flatten the list of lists

@@ -1,2 +1,1 @@
-from .chunking import RecursiveTokenChunker
 from .semantic_chunker import ProtonxSemanticChunker
