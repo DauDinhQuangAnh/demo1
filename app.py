@@ -16,12 +16,9 @@ import pdfplumber  # PDF extraction
 import io
 from docx import Document  # DOCX extraction
 from components import notify
-from constant import EN, VI, USER, ASSISTANT, ENGLISH, VIETNAMESE, ONLINE_LLM,  GEMINI, DB
+from constant import  VI, USER, ASSISTANT, VIETNAMESE, ONLINE_LLM,  GEMINI, DB
 from collection_management import list_collection
 from dotenv import load_dotenv
-import nltk
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
 
 load_dotenv()
 
@@ -421,8 +418,12 @@ if prompt := st.chat_input("How can I assist you today?"):
                         st.session_state.number_docs_retrieval
                     )
                     #retrieved_data,
-                    enhanced_prompt = """The user prompt is: "{}". Just answer.
-                    Use the following retrieved data to craft your response: \n{}""".format(prompt, retrieved_data)
+                    enhanced_prompt = """
+                    The user prompt is: "{}". 
+                    You are a chatbot designed to answer questions related to admissions at UIT (University of Information Technology). 
+                    If the user greets, respond only with a friendly greeting and introduce yourself as UIT Chatbot. 
+                    Otherwise, use the provided retrieved data below to answer the user's question in a friendly and helpful manner. 
+                    Your responses must be accurate, detailed, and based on the retrieved data: \n{}""".format(prompt, retrieved_data)
 
                 elif st.session_state.search_option == "Hyde Search":
               
@@ -441,10 +442,13 @@ if prompt := st.chat_input("How can I assist you today?"):
                         num_samples=1
                     )
 
-                    enhanced_prompt = """The user prompt is: "{}". 
+                    enhanced_prompt = """
+                    The user prompt is: "{}". 
                     You are a chatbot designed to answer questions related to admissions at UIT (University of Information Technology). 
-                    Please respond in a friendly and helpful manner, providing accurate and detailed information about admissions, scholarships, programs, and student life at UIT. 
-                    Use the following retrieved data to craft your response: \n{}""".format(prompt, retrieved_data)
+                    If the user greets, respond only with a friendly greeting and introduce yourself as UIT Chatbot. 
+                    Otherwise, use the provided retrieved data below to answer the user's question in a friendly and helpful manner. 
+                    Your responses must be accurate, detailed, and based on the retrieved data: \n{}""".format(prompt, retrieved_data)
+
 # Đã có prompt, retrieved_data -> metadata{answer, question, chunk }
                 
                 if metadatas:
